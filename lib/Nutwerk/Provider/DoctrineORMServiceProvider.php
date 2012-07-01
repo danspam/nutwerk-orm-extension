@@ -21,26 +21,21 @@ use Silex\ServiceProviderInterface;
 class DoctrineORMServiceProvider implements ServiceProviderInterface
 {
     public function register(Application $app)
-    {        
+    {
         $dbal = $app['db'];
 
         if (!$dbal instanceof \Doctrine\DBAL\Connection) {
-            throw new \InvalidArgumentException('$app[\'db\'] must be an instance of \Doctrine\DBAL\Connection'); 
+            throw new \InvalidArgumentException('$app[\'db\'] must be an instance of \Doctrine\DBAL\Connection');
         }
-        
+
         $this->loadDoctrineConfiguration($app);
-        $this->setOrmDefaults($app);
         $this->loadDoctrineOrm($app);
 
-        if(isset($app['db.orm.class_path'])) {
-            $app['autoloader']->registerNamespace('Doctrine\\ORM', $app['db.orm.class_path']);
-        }
     }
 
     private function loadDoctrineOrm(Application $app)
     {
-        $self = $this;
-        $app['db.orm.em'] = $app->share(function() use($self, $app) {
+        $app['db.orm.em'] = $app->share(function() use($app) {
             return EntityManager::create($app['db'], $app['db.orm.config']);
         });
     }
@@ -50,8 +45,8 @@ class DoctrineORMServiceProvider implements ServiceProviderInterface
         $defaults = array(
             'entities' => array(
                 array(
-                    'type' => 'annotation', 
-                    'path' => 'Entity', 
+                    'type' => 'annotation',
+                    'path' => 'Entity',
                     'namespace' => 'Entity',
                 )
             ),
@@ -98,7 +93,9 @@ class DoctrineORMServiceProvider implements ServiceProviderInterface
                         throw new \InvalidArgumentException(sprintf('"%s" is not a recognized driver', $entity['type']));
                         break;
                 }
-                $app['autoloader']->registerNamespace($entity['namespace'], $entity['path']);
+                //namespaces should be registered using composer
+                //perhaps there is an automatic way to do this?
+                //$app['autoloader']->registerNamespace($entity['namespace'], $entity['path']);
             }
             $config->setMetadataDriverImpl($chain);
 
@@ -108,5 +105,10 @@ class DoctrineORMServiceProvider implements ServiceProviderInterface
 
             return $config;
         });
+    }
+
+    public function boot (Application $app)
+    {
+        $this->setOrmDefaults($app);
     }
 }
